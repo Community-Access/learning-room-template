@@ -1,5 +1,6 @@
 /**
  * Build PR validation report markdown from validation results.
+ * This is used by the PR Validation Bot workflow to format feedback.
  */
 
 function buildValidationReportBody(results, timestampIso) {
@@ -13,32 +14,31 @@ function buildValidationReportBody(results, timestampIso) {
   };
 
   const status = safeResults.passed
-    ? "🎉 **Hooray! Validation Passed**"
-    : "⚠️ **Let's fix a few things**";
+    ? "**Validation Passed** [PASS]"
+    : "**Validation Needs Attention** [ACTION REQUIRED]";
 
-  let body = `Hi! I'm Aria. Here is my review of your pull request:\n\n### Report Status\n${status}\n\n`;
+  let body = `## PR Validation Report\n\n${status}\n\n`;
 
-  if (safeResults.passed) {
-    body += `> **➡️ Great job! You unlocked the next level.**\n> Head back to the [Course Guide](../../docs/course-guide.md) to see what chapter is next!\n\n`;
-  }
-
-  body += "### Required Checks\n\n";
-  (safeResults.required || []).forEach(check => {
-    body += `- **${check.name}**\n`;
-    if (!check.passed) {
-      body += `  ${check.message}\n`;
-      if (check.help) {
-        body += `  *${check.help}*\n`;
+  if ((safeResults.required || []).length > 0) {
+    body += "### Required Checks\n\n";
+    (safeResults.required || []).forEach(check => {
+      const state = check.passed ? '[PASS]' : '[ACTION REQUIRED]';
+      body += `- **${check.name}** ${state}\n`;
+      if (!check.passed) {
+        body += `   ${check.message}\n`;
+        if (check.help) {
+          body += `   *${check.help}*\n`;
+        }
       }
-    }
-    body += "\n";
-  });
+      body += "\n";
+    });
+  }
 
   if ((safeResults.suggestions || []).length > 0) {
     body += "### Suggestions for Improvement\n\n";
     body += "*These are optional but will make your contribution even better:*\n\n";
     safeResults.suggestions.forEach(suggestion => {
-      body += `- ${suggestion.message}\n`;
+      body += `- **${suggestion.title}:** ${suggestion.message}\n`;
       if (suggestion.help) {
         body += `  *${suggestion.help}*\n`;
       }
@@ -49,13 +49,14 @@ function buildValidationReportBody(results, timestampIso) {
   if ((safeResults.accessibility || []).length > 0) {
     body += "### Accessibility Analysis\n\n";
     safeResults.accessibility.forEach(item => {
-      body += `- **${item.title}**\n`;
-      body += `  ${item.message}\n`;
+      const state = item.type === 'error' ? '[ACTION REQUIRED]' : '[REVIEW]';
+      body += `- **${item.title}** ${state}\n`;
+      body += `   ${item.message}\n`;
       if (item.file) {
-        body += `  \`${item.file}\`${item.line ? ` (line ${item.line})` : ""}\n`;
+        body += `   \`${item.file}\`${item.line ? ` (line ${item.line})` : ""}\n`;
       }
       if (item.fix) {
-        body += `  **Fix:** ${item.fix}\n`;
+        body += `   **Fix:** ${item.fix}\n`;
       }
       body += "\n";
     });
@@ -68,8 +69,9 @@ function buildValidationReportBody(results, timestampIso) {
   });
 
   body += "\n---\n";
-  body += `*Automated validation by Aria, your Workshop Agent. Last updated: ${ts}*\n`;
-  body += "*Questions? Check [PR Guidelines](../../docs/06-working-with-pull-requests.md) or mention @facilitator*";
+  body += `*Automated validation by Learning Room Bot. Aria generated this review. Last updated: ${ts}*\n`;
+  body += "*Questions? Check the guides or mention @facilitator in a comment.*";
+  
   return body;
 }
 
