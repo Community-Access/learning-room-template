@@ -2,17 +2,21 @@
 
 ## Overview
 
-The Learning Room uses three interconnected GitHub Actions workflows to provide magical, real-time feedback to students as they work on challenges. This guide explains how the system works and how to maintain/extend it for future workshops.
+The Learning Room uses GitHub Actions workflows to provide real-time feedback to students as they work through challenges in their individual Classroom repos. This guide explains how the system works and how to maintain or extend it.
 
 ### The Automation Stack
 
 | Workflow | Purpose | Triggers |
 |----------|---------|----------|
-| `pr-validation-bot.yml` | Welcomes first-timers, validates PR structure | PR opened/edited/reviewed |
-| `content-validation.yml` | Checks links, markdown, accessibility | PR opened/edited |
-| `skills-progression.yml` | Awards badges, tracks progress, unlocks challenges | PR merged, issue closed |
+| `pr-validation-bot.yml` | Aria bot -- welcomes first-timers, validates PR structure | PR opened/edited/reviewed |
+| `content-validation.yml` | Checks links, Markdown, accessibility | PR opened/edited |
+| `student-progression.yml` | Creates the first challenge and unlocks the next challenge issue in sequence | Workflow dispatch, issue closed |
+| `skills-progression.yml` | Posts achievement and progress feedback | PR merged |
+| `autograder-conflicts.yml` | Validates merge conflict resolution (Ch07) | PR opened/edited |
+| `autograder-local-commit.yml` | Validates local Git commit (Ch10) | Push to branch |
+| `autograder-template.yml` | Validates issue template creation (Ch14) | Issues created |
+| `autograder-capstone.yml` | Validates capstone challenge (Ch16) | PR opened |
 
----
 
 ## Architecture
 
@@ -24,6 +28,7 @@ learning-room/
 │   ├── workflows/                 # GitHub Actions workflows
 │   │   ├── pr-validation-bot.yml
 │   │   ├── content-validation.yml
+│   │   ├── student-progression.yml
 │   │   └── skills-progression.yml
 │   └── scripts/                   # Support scripts
 │       ├── validate-pr.js         # PR validation logic
@@ -35,22 +40,22 @@ learning-room/
 ├── package.json                   # Node.js dependencies
 └── docs/                          # Challenge and documentation
     ├── CHALLENGES.md
-    ├── GROUP_CHALLENGES.md
-    └── [challenge files]
+│   └── [starter files]
 ```
 
 ### How Student Branches Work
 
 1. **Student creates a branch** from main to work on their challenge
    - Branch naming: `fix/studentname-issue123` or `feature/studentname-skill`
-   
+
 2. **Student opens a PR** against `main` (or their own tracking branch)
    - References the issue: `Closes #123`
-   
+
 3. **Workflows run automatically:**
    - `pr-validation-bot`: Validates structure, welcomes first-timers
    - `content-validation`: Checks links, markdown, accessibility
-   - `skills-progression`: (Only runs on merge) Awards badges
+  - `student-progression`: Creates the next challenge when an issue closes
+  - `skills-progression`: Awards badges when a PR merges
 
 4. **Student receives feedback** in PR comments within ~30 seconds
 
@@ -58,20 +63,19 @@ learning-room/
 
 6. **Peer reviewer approves** (facilitated by facilitator)
 
-7. **PR is merged** → skills-progression workflow celebrates 🎉
+7. **PR is merged** → skills-progression workflow celebrates 
 
----
 
 ## Workflow Details
 
 ### 1. PR Validation Bot (`pr-validation-bot.yml`)
 
 **What it does:**
-- ✅ Welcomes new contributors with orientation
-- ✅ Validates PR has issue reference (`Closes #123`)
-- ✅ Validates PR has meaningful description
-- ✅ Provides educational feedback with links to resources
-- ✅ Auto-responds to help requests in comments
+-  Welcomes new contributors with orientation
+-  Validates PR has issue reference (`Closes #123`)
+-  Validates PR has meaningful description
+-  Provides educational feedback with links to resources
+-  Auto-responds to help requests in comments
 
 **Key Scripts:**
 - `validate-pr.js` — Checks PR requirements
@@ -84,10 +88,10 @@ Edit `validate-pr.js` to change what's validated. Keep checks *encouraging* not 
 ### 2. Content Validation (`content-validation.yml`)
 
 **What it does:**
-- ✅ Validates all markdown links exist
-- ✅ Checks markdown structure (headings, lists, code blocks)
-- ✅ Identifies accessibility issues (alt text, link text, tables)
-- ✅ Provides clear, educational feedback
+-  Validates all markdown links exist
+-  Checks markdown structure (headings, lists, code blocks)
+-  Identifies accessibility issues (alt text, link text, tables)
+-  Provides clear, educational feedback
 
 **Key Scripts:**
 - `check_links.py` — Validates relative/absolute links
@@ -100,10 +104,10 @@ Update the Python scripts to match your accessibility standards. The regex patte
 ### 3. Skills Progression (`skills-progression.yml`)
 
 **What it does:**
-- ✅ Awards achievement badges when PRs merge
-- ✅ Celebrates milestones (first PR, 5th PR, etc.)
-- ✅ Tracks skill categories (markdown, accessibility, review, collaboration)
-- ✅ Suggests next challenges to students
+-  Awards achievement badges when PRs merge
+-  Celebrates milestones (first PR, 5th PR, etc.)
+-  Tracks skill categories (markdown, accessibility, review, collaboration)
+-  Suggests next challenges to students
 
 **Key Scripts:**
 - Built into the workflow using `actions/github-script`
@@ -111,7 +115,6 @@ Update the Python scripts to match your accessibility standards. The regex patte
 **Customization for Future Workshops:**
 Edit the badge names, skill categories, and celebration messages in `skills-progression.yml` to match your workshop theme.
 
----
 
 ## Setup Instructions (For New Workshop)
 
@@ -184,7 +187,6 @@ python .github/scripts/check_accessibility.py .
 2. Ensure repository has GitHub Actions enabled
 3. Create test PR to verify workflows run
 
----
 
 ## Maintaining & Extending
 
@@ -225,7 +227,7 @@ function checkMyRule() {
    ```yaml
    if (labels.includes('skill: yourskill')) {
      skillType = 'yourskill';
-     badgeName = '🎖️ Your Badge';
+     badgeName = ' Your Badge';
    }
    ```
 3. Update `skillDescription` and other references
@@ -247,7 +249,6 @@ function checkMyRule() {
 | Links broken in feedback | Update relative paths in Python scripts |
 | Workflows not triggering | Check `on:` conditions and branch settings |
 
----
 
 ## Performance Considerations
 
@@ -270,18 +271,17 @@ As student count grows:
 - API rate limits: GitHub allows 1000 API calls per workflow run
 - If you hit limits: consolidate checks or split into multiple workflows
 
----
 
 ## Documentation Best Practices
 
 Document your changes in `.github/README.md` or in your main Learning Room documentation:
 
 ### What to Document
-- ✅ Which checks are enabled and why
-- ✅ How to interpret bot feedback  
-- ✅ How students request help from the bot
-- ✅ What to do if bot feedback seems wrong
-- ✅ How facilitators can override bot decisions
+-  Which checks are enabled and why
+-  How to interpret bot feedback  
+-  How students request help from the bot
+-  What to do if bot feedback seems wrong
+-  How facilitators can override bot decisions
 
 ### Student-Facing Guide
 
@@ -291,7 +291,6 @@ Create a guide explaining:
 - How to fix common issues
 - When to ask for human review
 
----
 
 ## Future Enhancements
 
@@ -309,7 +308,6 @@ This system is designed to be extended! Future contributors can:
 - Improve error messages
 - Translate feedback to other languages
 
----
 
 ## Troubleshooting
 
@@ -344,7 +342,6 @@ permissions:
 - Student branches push to the repository (not forks)
 - No branch protection blocks the workflow permission
 
----
 
 ## Support & Questions
 
@@ -354,7 +351,6 @@ For help maintaining this automation:
 3. Test changes locally before deploying
 4. Keep changes documented for future maintainers
 
----
 
 ## License
 
@@ -362,7 +358,6 @@ These workflows and scripts are part of the Git Going with GitHub workshop and a
 
 When you duplicate for a new workshop, maintain attribution where appropriate.
 
----
 
 **Last Updated:** March 2026
 

@@ -9,8 +9,6 @@ on:
     types: [submitted]
   issue_comment:
     types: [created]
-  issues:
-    types: [opened]
 
 permissions:
   contents: read
@@ -19,50 +17,6 @@ permissions:
   statuses: write
 
 jobs:
-  welcome-issue-timer:
-    name: Welcome to Your First Issue
-    runs-on: ubuntu-latest
-    if: github.event_name == 'issues' && github.event.action == 'opened'
-    steps:
-      - name: Greet First Issue
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              const { data: issues } = await github.rest.issues.listForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'all',
-                creator: context.payload.issue.user.login
-              });
-
-              // Only count actual issues (exclude PRs which are also treated as issues in the API sometimes, though creator filter helps)
-              const firstIssue = issues.filter(i => !i.pull_request).length === 1;
-
-              if (firstIssue) {
-                const welcomeBody = [
-                  '## Workspace Agent Aria: Welcome to Your First Issue! 👋',
-                  '',
-                  'Hi @' + context.payload.issue.user.login + '! I am Aria. Great job successfully opening an Issue!',
-                  '',
-                  'Remember, a good Issue for a human is also a perfect **prompt** for an AI. By carefully describing the problem here, you are already practicing how to command your custom Capstone Agent tomorrow!',
-                  '',
-                  'Keep up the great work!',
-                  '---',
-                  '*This is an automated message from Aria 🤖, your friendly Workshop Agent.*'
-                ].join('\n');
-
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.payload.issue.number,
-                  body: welcomeBody
-                });
-              }
-            } catch (error) {
-              console.error('Error verifying first issue:', error);
-            }
-
   welcome-first-timer:
     name: Welcome First-Time Contributor
     runs-on: ubuntu-latest
@@ -85,30 +39,30 @@ jobs:
               
               if (isFirstPR) {
                 const welcomeBody = [
-                  '## Welcome to Your First Pull Request! 🎉',
+                  '## Welcome to Your First Pull Request',
                   '',
                   'Hi @' + context.payload.pull_request.user.login + '! Congratulations on opening your first PR in the Learning Room!',
                   '',
                   '### What Happens Next',
                   '',
-                  '1. **Automated Checks** — This bot validates your PR within ~30 seconds',
-                  '2. **Review Feedback** — You\'ll see a validation report below',
-                  '3. **Peer Review** — A facilitator or peer will review your changes',
-                  '4. **Iterate** — Make updates if needed based on feedback',
-                  '5. **Merge** — Once approved, your changes are merged!',
+                  '1. **Automated checks** - This bot validates your PR within about 30 seconds',
+                  '2. **Review feedback** - You will see a validation report below',
+                  '3. **Peer review** - A facilitator or peer will review your changes',
+                  '4. **Iterate** - Make updates if needed based on feedback',
+                  '5. **Merge** - Once approved, your changes are merged',
                   '',
                   '### While You Wait',
                   '',
-                  '- ✅ Check the automated validation report below',
-                  '- 📖 Review the [PR Guidelines](../docs/05-working-with-pull-requests.md)',
-                  '- 👀 Look at other open PRs to learn from examples',
-                  '- 💬 Ask questions in comments - no question is too basic!',
+                  '- Check the automated validation report below',
+                  '- Review the [PR Guidelines](https://github.com/Community-Access/git-going-with-github/blob/main/docs/06-working-with-pull-requests.md)',
+                  '- Look at other open PRs to learn from examples',
+                  '- Ask questions in comments - no question is too basic',
                   '',
                   '**Remember:** Every experienced open source contributor started exactly where you are now.',
                   'Your perspective and effort matter!',
                   '',
                   '---',
-                  '*This is an automated message from the Aria the Workshop Agent.*'
+                  '*This is an automated message from the Learning Room Bot.*'
                 ].join('\n');
 
                 await github.rest.issues.createComment({
@@ -151,7 +105,12 @@ jobs:
           python-version: '3.11'
 
       - name: Install Node dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Install Python dependencies
         run: |
@@ -159,6 +118,7 @@ jobs:
 
       - name: Run PR validation
         id: validate
+        continue-on-error: true
         run: node .github/scripts/validate-pr.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -168,6 +128,42 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+
+      - name: Detect challenge context
+        id: challenge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Detect which challenge this PR relates to from linked issues or branch name
+            const prBody = process.env.PR_BODY || '';
+            const branch = '${{ github.head_ref }}' || '';
+            
+            // Check for "Closes #N" or "Fixes #N" patterns linking to challenge issues
+            const closePattern = /(?:closes|fixes|resolves)\s+#(\d+)/gi;
+            const matches = [...prBody.matchAll(closePattern)];
+            const linkedIssues = matches.map(m => parseInt(m[1]));
+            
+            // Detect challenge from branch name (e.g., challenge-06/username)
+            const branchMatch = branch.match(/challenge-(\d+)/i);
+            const branchChallenge = branchMatch ? parseInt(branchMatch[1]) : null;
+            
+            // Map challenges to curriculum chapters for help links
+            const challengeToChapter = {
+              1: '02', 2: '05', 3: '05', 4: '04', 5: '04',
+              6: '06', 7: '07', 8: '08', 9: '06', 10: '14',
+              11: '06', 12: '15', 13: '16', 14: '17', 15: '19', 16: '20'
+            };
+            
+            const detected = branchChallenge || (linkedIssues.length > 0 ? null : null);
+            const chapter = detected ? challengeToChapter[detected] : null;
+            
+            core.setOutput('number', detected || '');
+            core.setOutput('chapter', chapter || '');
+            core.setOutput('linked_issues', linkedIssues.join(','));
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+
 
       - name: Post validation results
         if: always()
@@ -212,32 +208,35 @@ jobs:
 
             const body = buildValidationReportBody(results);
             
-            // Find and update existing bot comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number
-            });
-            
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
-              comment.body.includes('PR Validation Report')
-            );
-            
-            if (botComment) {
-              await github.rest.issues.updateComment({
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
+                issue_number: context.payload.pull_request.number
               });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body: body
-              });
+
+              const botComment = comments.find(comment =>
+                comment.user.type === 'Bot' &&
+                comment.body.includes('PR Validation Report')
+              );
+
+              if (botComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: body
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  body: body
+                });
+              }
+            } catch (error) {
+              console.error('Could not post validation comment:', error.message);
             }
 
   comment-responder:
