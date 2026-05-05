@@ -10,6 +10,10 @@ on:
   issue_comment:
     types: [created]
 
+concurrency:
+  group: pr-validation-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
@@ -20,8 +24,9 @@ jobs:
   welcome-first-timer:
     name: Welcome First-Time Contributor
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'pull_request' && github.event.action == 'opened'
-    
+
     steps:
       - name: Check if first-time contributor
         uses: actions/github-script@v7
@@ -86,8 +91,9 @@ jobs:
   validate-pr:
     name: Validate PR & Provide Feedback
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: github.event_name == 'pull_request'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -97,12 +103,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Node dependencies
         run: |
@@ -138,32 +144,31 @@ jobs:
             // Detect which challenge this PR relates to from linked issues or branch name
             const prBody = process.env.PR_BODY || '';
             const branch = '${{ github.head_ref }}' || '';
-            
+
             // Check for "Closes #N" or "Fixes #N" patterns linking to challenge issues
             const closePattern = /(?:closes|fixes|resolves)\s+#(\d+)/gi;
             const matches = [...prBody.matchAll(closePattern)];
             const linkedIssues = matches.map(m => parseInt(m[1]));
-            
+
             // Detect challenge from branch name (e.g., challenge-06/username)
             const branchMatch = branch.match(/challenge-(\d+)/i);
             const branchChallenge = branchMatch ? parseInt(branchMatch[1]) : null;
-            
+
             // Map challenges to curriculum chapters for help links
             const challengeToChapter = {
               1: '02', 2: '05', 3: '05', 4: '04', 5: '04',
               6: '06', 7: '07', 8: '08', 9: '06', 10: '14',
               11: '06', 12: '15', 13: '16', 14: '17', 15: '19', 16: '20'
             };
-            
+
             const detected = branchChallenge || (linkedIssues.length > 0 ? null : null);
             const chapter = detected ? challengeToChapter[detected] : null;
-            
+
             core.setOutput('number', detected || '');
             core.setOutput('chapter', chapter || '');
             core.setOutput('linked_issues', linkedIssues.join(','));
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
-
 
       - name: Post validation results
         if: always()
@@ -173,7 +178,7 @@ jobs:
             const fs = require('fs');
             const { buildValidationReportBody } = require('./.github/scripts/validation-report.js');
             let results;
-            
+
             try {
               if (!fs.existsSync('validation-results.json')) {
                 console.log('Warning: validation-results.json not found');
@@ -207,7 +212,7 @@ jobs:
             }
 
             const body = buildValidationReportBody(results);
-            
+
             try {
               const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
@@ -242,8 +247,27 @@ jobs:
   comment-responder:
     name: Respond to Help Requests
     runs-on: ubuntu-latest
-    if: github.event_name == 'issue_comment'
-    
+    timeout-minutes: 10
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.comment.user.type != 'Bot' &&
+      (
+        contains(github.event.comment.body, '@bot help') ||
+        contains(github.event.comment.body, '@aria-bot') ||
+        contains(github.event.comment.body, 'need help') ||
+        contains(github.event.comment.body, 'Need help') ||
+        contains(github.event.comment.body, 'merge conflict') ||
+        contains(github.event.comment.body, 'Merge conflict') ||
+        contains(github.event.comment.body, 'request review') ||
+        contains(github.event.comment.body, 'Request review') ||
+        contains(github.event.comment.body, 'next challenge') ||
+        contains(github.event.comment.body, 'Next challenge') ||
+        contains(github.event.comment.body, 'assign me') ||
+        contains(github.event.comment.body, 'Assign me') ||
+        contains(github.event.comment.body, 'claim') ||
+        contains(github.event.comment.body, 'Claim')
+      )
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -251,22 +275,27 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Respond to comment
         uses: actions/github-script@v7
         with:
           script: |
             const { getAutoResponse } = require('./.github/scripts/comment-responder.js');
-            
+
             const author = context.payload.comment.user.login;
             const body = context.payload.comment.body;
-            
+
             const response = getAutoResponse(body, author);
-            
+
             if (response) {
               try {
                 await github.rest.issues.createComment({
