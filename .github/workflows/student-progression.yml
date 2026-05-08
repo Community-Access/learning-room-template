@@ -6,12 +6,16 @@ on:
   workflow_dispatch:
     inputs:
       start_challenge:
-        description: 'Challenge number to create, usually 1 for Day 1 or 10 for Day 2'
+        description: "Challenge number to create, usually 1 for Day 1 or 10 for Day 2"
         required: true
-        default: '1'
+        default: "1"
       assignee:
-        description: 'GitHub username to assign. Leave blank to use the workflow actor.'
+        description: "GitHub username to assign. Leave blank to use the workflow actor."
         required: false
+
+concurrency:
+  group: student-progression-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -21,6 +25,7 @@ jobs:
   create-next-challenge:
     name: Create Next Challenge Issue
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, 'Challenge ')
 
     steps:
@@ -30,7 +35,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Create challenge issue
         run: node .github/scripts/challenge-progression.js
