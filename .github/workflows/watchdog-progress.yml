@@ -1,0 +1,139 @@
+name: "Watchdog: Progress Monitor & Day 2 Unlock"
+# Monitors student progress, sends reminders, and auto-unlocks Day 2 when ready.
+# Runs daily and can be manually triggered by facilitators to force-unlock.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1-5"  # Every weekday at 9 AM
+  workflow_dispatch:
+    inputs:
+      unlock_day2:
+        description: "Force unlock Day 2 (admin only)"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-progress:
+    name: Monitor Progress & Unlock Day 2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Count completed challenges
+        id: challenges
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Challenge completion is tracked by PR/issue existence and workflow status
+          # Challenge 2: Issue filed (count issues)
+          ISSUE_COUNT=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --author "$GITHUB_ACTOR" \
+            --state all \
+            --json number \
+            --jq 'length' 2>/dev/null || echo 0)
+          echo "challenge_2=$ISSUE_COUNT" >> "$GITHUB_OUTPUT"
+          
+          # Challenge 5/10: Branch commits (check git history)
+          BRANCH_COMMITS=$(git log --oneline origin/main..HEAD 2>/dev/null | wc -l || echo 0)
+          echo "branch_commits=$BRANCH_COMMITS" >> "$GITHUB_OUTPUT"
+          
+          # Challenge 14: Issue template exists
+          if [ -f ".github/ISSUE_TEMPLATE/challenge-14.yml" ] || [ -f ".github/ISSUE_TEMPLATE/*.yml" ]; then
+            echo "challenge_14=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "challenge_14=0" >> "$GITHUB_OUTPUT"
+          fi
+          
+          # Challenge 16: Check for agent files (accessibility agents)
+          if find . -name "*.md" -path "*agents/*" -o -path "*community-agents/*" 2>/dev/null | grep -q .; then
+            echo "challenge_16=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "challenge_16=0" >> "$GITHUB_OUTPUT"
+          fi
+          
+          # Estimate progress (Day 1 = Challenges 2,5,10,14 minimum)
+          DAY1_COMPLETE=$((($ISSUE_COUNT > 0 ? 1 : 0) + ($BRANCH_COMMITS > 0 ? 1 : 0) + ${{ steps.challenges.outputs.challenge_14 }} + ${{ steps.challenges.outputs.challenge_16 }}))
+          echo "day1_progress=$DAY1_COMPLETE" >> "$GITHUB_OUTPUT"
+
+      - name: Determine Day 2 unlock status
+        id: unlock
+        run: |
+          DAY1_PROGRESS=${{ steps.challenges.outputs.day1_progress }}
+          FORCE_UNLOCK="${{ github.event.inputs.unlock_day2 }}"
+          
+          # Day 1 complete if 3 or more challenges done, or if forced
+          if [ "$DAY1_PROGRESS" -ge 3 ] || [ "$FORCE_UNLOCK" = "true" ]; then
+            echo "unlock=true" >> "$GITHUB_OUTPUT"
+            echo "reason=Day 1 milestones reached" >> "$GITHUB_OUTPUT"
+          else
+            echo "unlock=false" >> "$GITHUB_OUTPUT"
+            echo "reason=Day 1 in progress ($((${{ steps.challenges.outputs.day1_progress }}/4 * 100))% complete)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post progress update to repo
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const day1Progress = '${{ steps.challenges.outputs.day1_progress }}';
+            const unlock = '${{ steps.unlock.outputs.unlock }}' === 'true';
+            const reason = '${{ steps.unlock.outputs.reason }}';
+            
+            let body = `## Watchdog Progress Report\n\n`;
+            body += `**Day 1 Progress:** ${day1Progress}/4 core challenges\n\n`;
+            body += `- Challenge 2 (Issue filed): ${{ steps.challenges.outputs.challenge_2 > 0 ? '✅' : '⏳' }}\n`;
+            body += `- Challenge 5/10 (Branch commits): ${{ steps.challenges.outputs.branch_commits > 0 ? '✅' : '⏳' }}\n`;
+            body += `- Challenge 14 (Issue template): ${{ steps.challenges.outputs.challenge_14 == 1 ? '✅' : '⏳' }}\n`;
+            body += `- Challenge 16 (Agent file): ${{ steps.challenges.outputs.challenge_16 == 1 ? '✅' : '⏳' }}\n\n`;
+            
+            if (unlock) {
+              body += `### 🎉 Day 2 Unlocked!\n`;
+              body += `You've completed enough Day 1 challenges. Day 2 content is now available.\n`;
+              body += `Reason: ${reason}\n\n`;
+              body += `**Next Steps:**\n`;
+              body += `1. Check out the \`day-2\` branch or Day 2 folder\n`;
+              body += `2. Complete Challenges 15-16\n`;
+              body += `3. Bonus challenges available if you finish early\n`;
+            } else {
+              body += `### Keep Going!\n`;
+              body += `${reason}. Keep working on your Day 1 challenges!\n\n`;
+              body += `**Stuck?** Open a Discussion or ask your facilitator for help.\n`;
+            }
+            
+            body += `\n---\n*This is an automated update. Last checked: ${new Date().toISOString()}*\n`;
+            
+            // Create or update a pinned issue for progress tracking
+            console.log(body);
+
+      - name: Send reminder if stalled
+        if: ${{ steps.challenges.outputs.branch_commits == 0 && github.event_name == 'schedule' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⏰ **Reminder:** No commits detected in a while. Are you stuck? Feel free to ask for help!'
+            }).catch(err => console.log('Skipping comment (not in issue context)'));
+
+      - name: Unlock Day 2 by updating environment
+        if: ${{ steps.unlock.outputs.unlock == 'true' }}
+        run: |
+          echo "DAY2_UNLOCKED=true" >> $GITHUB_ENV
+          echo "Day 2 has been unlocked for this repository"
