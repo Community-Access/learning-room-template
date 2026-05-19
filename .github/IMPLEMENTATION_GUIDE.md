@@ -2,6 +2,7 @@
 **Table: Learning Room workflow automation and triggers**
 
 **Table: Key documentation files for Learning Room automation**
+
 # Learning Room Template: Implementation Guide
 
 > **For full workshop deployment instructions, see
@@ -108,7 +109,7 @@ preserves them when creating student copies.
 ## Related Documentation
 
 - [Workshop Deployment Guide](../../classroom/README.md) -- full Classroom setup
-- [Facilitator Guide](../../facilitator/FACILITATOR_GUIDE.md) -- workshop
+- [Facilitator Guide](../../admin/FACILITATOR_GUIDE.md) -- workshop
   timeline and facilitation tips
 - [Challenge Progression Config](../../.github/data/challenge-progression.json)
   -- level and badge definitions
