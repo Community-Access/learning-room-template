@@ -14,7 +14,7 @@ This roadmap guides you through the full workshop from setup to capstone. Follow
 ## Before You Start
 
 1. Read the [Setup Guide](setup-guide.md).
-2. Open the [Challenge Hub](../../docs/CHALLENGES.md).
+2. Open the [Challenge Hub](CHALLENGES.md).
 3. Keep the [Keyboard Shortcuts](keyboard-shortcuts.md) page open if useful.
 
 ## Day 1 Path (Challenges 1-9)
@@ -86,7 +86,7 @@ Use this list to track your full journey:
 - Completed capstone challenge (16)
 - Optional: completed bonus challenges (A-E)
 
-When in doubt, return to the [Challenge Hub](../../docs/CHALLENGES.md). It is the canonical challenge reference.
+When in doubt, return to the [Challenge Hub](CHALLENGES.md). It is the canonical challenge reference.
 
 ## Authoritative Sources
 

@@ -131,8 +131,8 @@ Shows issues in the files you changed.
 
 **What the bot found:**
 
-- Bad: `[click here](../docs/guide.md)`
-- Good: `[Markdown Guide](../docs/guide.md)`
+- Bad: ``[click here](../docs/guide.md)``
+- Good: ``[Markdown Guide](../docs/guide.md)``
 
 **How to fix:**
 Replace vague text with specific words describing the link destination.
@@ -149,8 +149,8 @@ Replace vague text with specific words describing the link destination.
 
 **Example:**
 
-- Wrong: `[link](../docs/markdnown-guide.md)` (typo in filename)
-- Right: `[link](../docs/markdown-guide.md)` (typo fixed)
+- Wrong: ``[link](../docs/markdnown-guide.md)`` (typo in filename)
+- Right: ``[link](../docs/markdown-guide.md)`` (typo fixed)
 
 ## Using Bot Auto-Responses
 
@@ -336,7 +336,7 @@ Here's the support path:
 - [Pull Requests (Chapter 06)](https://github.com/Community-Access/git-going-with-github/blob/main/docs/06-working-with-pull-requests.md)
 - [Markdown Reference (Appendix C)](https://github.com/Community-Access/git-going-with-github/blob/main/docs/appendix-c-markdown-reference.md)
 - [Accessibility Standards (Appendix M)](https://github.com/Community-Access/git-going-with-github/blob/main/docs/appendix-m-accessibility-standards.md)
-- [Challenge Hub](../../docs/CHALLENGES.md)
+- [Challenge Hub](../docs/CHALLENGES.md)
 - [Course Roadmap](../docs/course-roadmap.md)
 - [GitHub Help](https://docs.github.com/en)
 

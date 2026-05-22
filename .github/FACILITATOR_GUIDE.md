@@ -217,7 +217,7 @@ If workflow failed, you might need to:
 
 ### Explaining Bot Decision
 >
-> The bot flagged your link text as non-descriptive. Instead of "[read more](link)", try "[Understanding Git Branches](link)" so screen readers users know what they're clicking. Give it a try!
+> The bot flagged your link text as non-descriptive. Instead of ``[read more](link)``, try ``[Understanding Git Branches](destination)`` so screen readers users know what they're clicking. Give it a try!
 
 ### Overriding Bot
 >
@@ -240,9 +240,9 @@ Remember: **The bot enables human connection, not replaces it.**
 
 - [Automation Setup and Maintenance](./SETUP_AND_MAINTENANCE.md)
 - [Learning Room README](../README.md)
-- [Challenge Hub](../../docs/CHALLENGES.md)
-- [Grading Guide](../../classroom/grading-guide.md)
-- [Solutions Directory](../../docs/solutions/)
+- [Challenge Hub](../docs/CHALLENGES.md)
+- [Grading Guide](https://github.com/Community-Access/git-going-with-github/blob/main/classroom/grading-guide.md)
+- [Solutions Directory](../docs/solutions/)
 
 **Questions?** Check the setup guide or reach out in your facilitator channel.
 

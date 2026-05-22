@@ -6,7 +6,7 @@
 # Learning Room Template: Implementation Guide
 
 > **For full workshop deployment instructions, see
-> [classroom/README.md](../../classroom/README.md).** That guide covers creating
+> [classroom/README.md](https://github.com/Community-Access/git-going-with-github/blob/main/classroom/README.md).** That guide covers creating
 > the GitHub Classroom, configuring assignments, and all facilitator setup steps.
 >
 > This document describes the automation that ships with the template repository
@@ -108,10 +108,10 @@ preserves them when creating student copies.
 
 ## Related Documentation
 
-- [Workshop Deployment Guide](../../classroom/README.md) -- full Classroom setup
-- [Facilitator Guide](../../admin/FACILITATOR_GUIDE.md) -- workshop
+- [Workshop Deployment Guide](https://github.com/Community-Access/git-going-with-github/blob/main/classroom/README.md) -- full Classroom setup
+- [Facilitator Guide](https://github.com/Community-Access/git-going-with-github/blob/main/admin/FACILITATOR_GUIDE.md) -- workshop
   timeline and facilitation tips
-- [Challenge Progression Config](../../.github/data/challenge-progression.json)
+- [Challenge Progression Config](https://github.com/Community-Access/git-going-with-github/blob/main/.github/data/challenge-progression.json)
   -- level and badge definitions
 
 ## Authoritative Sources
